@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MR PTFS — Flight Sim Creator</title>
+<meta name="description" content="MR PTFS — flight sim adventures, tutorials, and epic landings. New videos every week." />
+<!-- TODO: replace @mrptfs below with your real YouTube handle -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg-0: #040b18;
+    --bg-1: #081a33;
+    --cyan: #4fd8ff;
+    --blue: #5b8cff;
+    --violet: #8f6bff;
+    --magenta: #ff6ad5;
+    --text: #eaf4ff;
+    --muted: #9db9d8;
+    --glass: rgba(255, 255, 255, 0.07);
+    --glass-strong: rgba(255, 255, 255, 0.13);
+    --stroke: rgba(255, 255, 255, 0.16);
+    --stroke-bright: rgba(255, 255, 255, 0.38);
+    --radius: 26px;
+    --font-display: "Sora", system-ui, sans-serif;
+    --font-body: "Inter", system-ui, sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--font-body);
+    color: var(--text);
+    background:
+      radial-gradient(1200px 800px at 80% -10%, rgba(91, 140, 255, 0.22), transparent 60%),
+      radial-gradient(1000px 700px at 10% 10%, rgba(143, 107, 255, 0.16), transparent 55%),
+      linear-gradient(180deg, var(--bg-0), var(--bg-1) 55%, #0a1e3a);
+    min-height: 100vh;
+    overflow-x: hidden;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- fixed background layers ---------- */
+  .bg-aurora { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+  .blob {
+    position: absolute; border-radius: 50%; filter: blur(110px);
+    mix-blend-mode: screen; opacity: 0.55; will-change: transform;
+  }
+  .blob-1 { width: 52vw; height: 52vw; left: -12vw; top: -14vw; background: radial-gradient(circle, rgba(79, 216, 255, 0.55), transparent 70%); animation: drift1 26s ease-in-out infinite alternate; }
+  .blob-2 { width: 44vw; height: 44vw; right: -10vw; top: 12vh; background: radial-gradient(circle, rgba(91, 140, 255, 0.5), transparent 70%); animation: drift2 32s ease-in-out infinite alternate; }
+  .blob-3 { width: 40vw; height: 40vw; left: 20vw; bottom: -16vw; background: radial-gradient(circle, rgba(255, 106, 213, 0.32), transparent 70%); animation: drift3 38s ease-in-out infinite alternate; }
+  .blob-4 { width: 30vw; height: 30vw; right: 18vw; bottom: 4vh; background: radial-gradient(circle, rgba(143, 107, 255, 0.4), transparent 70%); animation: drift1 30s ease-in-out infinite alternate-reverse; }
+  @keyframes drift1 { to { transform: translate(8vw, 6vh) scale(1.15); } }
+  @keyframes drift2 { to { transform: translate(-7vw, 9vh) scale(1.1); } }
+  @keyframes drift3 { to { transform: translate(6vw, -8vh) scale(1.2); } }
+
+  #sky { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; transition: opacity 0.3s linear; }
+
+  .bg-noise {
+    position: fixed; inset: 0; z-index: 2; pointer-events: none; opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ---------- layout ---------- */
+  .wrap { position: relative; z-index: 10; max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+  section { padding: 96px 0; position: relative; }
+
+  /* ---------- glass primitives ---------- */
+  .glass {
+    position: relative;
+    background: linear-gradient(135deg, rgba(255,255,255,0.14), rgba(255,255,255,0.03) 55%);
+    -webkit-backdrop-filter: blur(22px) saturate(160%);
+    backdrop-filter: blur(22px) saturate(160%);
+    border: 1px solid var(--stroke);
+    border-radius: var(--radius);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.28),
+      inset 0 -1px 0 rgba(255,255,255,0.06),
+      0 24px 70px -28px rgba(0,0,0,0.7);
+  }
+  .glass::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    background: radial-gradient(120% 70% at 18% 0%, rgba(255,255,255,0.22), transparent 52%);
+  }
+  .sheen { overflow: hidden; }
+  .sheen::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    background: linear-gradient(105deg, transparent 42%, rgba(255,255,255,0.35) 50%, transparent 58%);
+    transform: translateX(-130%);
+  }
+  .sheen:hover::after { animation: sheenSweep 0.9s ease; }
+  @keyframes sheenSweep { to { transform: translateX(130%); } }
+
+  /* ---------- nav ---------- */
+  header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; justify-content: center; padding: 18px 20px 0;
+  }
+  .nav {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 12px 10px 18px; width: min(1160px, 100%);
+    transition: background 0.4s, box-shadow 0.4s, border-color 0.4s;
+  }
+  .nav.scrolled {
+    background: linear-gradient(135deg, rgba(10,24,44,0.75), rgba(7,16,32,0.6));
+    border-color: var(--stroke-bright);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 18px 50px -20px rgba(0,0,0,0.8);
+  }
+  .logo { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-weight: 800; font-size: 17px; letter-spacing: 0.02em; text-decoration: none; color: var(--text); }
+  .logo-badge {
+    width: 38px; height: 38px; border-radius: 12px; flex: none;
+    display: grid; place-items: center; font-size: 16px;
+    background: linear-gradient(135deg, var(--cyan), var(--violet));
+    box-shadow: 0 6px 20px -4px rgba(79,216,255,0.6);
+    color: #04101f; font-weight: 800;
+  }
+  .nav-links { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+  .nav-links a {
+    color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 500;
+    padding: 8px 14px; border-radius: 999px; transition: color 0.2s, background 0.2s;
+  }
+  .nav-links a:hover { color: #fff; background: rgba(255,255,255,0.08); }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    font-family: var(--font-display); font-weight: 600; font-size: 15px;
+    padding: 13px 26px; border-radius: 999px; text-decoration: none; cursor: pointer;
+    border: none; transition: transform 0.25s cubic-bezier(.2,.8,.2,1), box-shadow 0.25s, background 0.25s;
+    white-space: nowrap;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary {
+    color: #04121f; background: linear-gradient(135deg, #4fd8ff, #5b8cff 60%, #8f6bff);
+    box-shadow: 0 12px 38px -10px rgba(79, 190, 255, 0.7), inset 0 1px 0 rgba(255,255,255,0.5);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 18px 50px -10px rgba(79, 190, 255, 0.85), inset 0 1px 0 rgba(255,255,255,0.6); }
+  .btn-glass {
+    color: var(--text); background: var(--glass-strong);
+    border: 1px solid var(--stroke);
+    -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.22);
+  }
+  .btn-glass:hover { transform: translateY(-2px); border-color: var(--stroke-bright); background: rgba(255,255,255,0.16); }
+  .btn-sm { padding: 10px 18px; font-size: 14px; }
+  .nav-toggle { display: none; margin-left: auto; background: none; border: 1px solid var(--stroke); color: #fff; border-radius: 10px; width: 40px; height: 40px; font-size: 18px; cursor: pointer; }
+
+  /* ---------- hero ---------- */
+  .hero { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; padding-top: 90px; text-align: center; align-items: center; }
+  .avatar {
+    width: 78px; height: 78px; border-radius: 26px; display: grid; place-items: center; margin-bottom: 26px;
+    font-family: var(--font-display); font-weight: 800; font-size: 26px; color: #04101f;
+    background: linear-gradient(135deg, #4fd8ff, #8f6bff 70%, #ff6ad5);
+    box-shadow: 0 20px 60px -12px rgba(79,216,255,0.55), inset 0 1px 0 rgba(255,255,255,0.6);
+    animation: floaty 6s ease-in-out infinite;
+  }
+  @keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--cyan);
+    padding: 8px 16px; border-radius: 999px; margin-bottom: 24px;
+  }
+  .eyebrow .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 12px var(--cyan); animation: pulse 2.2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+  h1 {
+    font-family: var(--font-display); font-weight: 800; font-size: clamp(56px, 11vw, 132px);
+    line-height: 0.98; letter-spacing: -0.02em; margin-bottom: 22px;
+  }
+  .title-gradient {
+    background: linear-gradient(100deg, #ffffff 0%, #d7f2ff 28%, #7fd4ff 52%, #b79bff 74%, #ffffff 100%);
+    background-size: 220% auto;
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    animation: shine 9s linear infinite;
+  }
+  @keyframes shine { to { background-position: 220% center; } }
+  .subtitle { max-width: 620px; color: var(--muted); font-size: clamp(16px, 2vw, 19px); margin: 0 auto 34px; }
+  .hero-cta { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .stats {
+    display: grid; grid-template-columns: repeat(4, auto); gap: clamp(14px, 3vw, 30px);
+    margin-top: 54px; padding: 26px 40px;
+  }
+  .stat { text-align: center; min-width: 92px; }
+  .stat .num { font-family: var(--font-display); font-weight: 800; font-size: clamp(26px, 3.4vw, 38px); background: linear-gradient(120deg, #fff, #8fd8ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .stat .label { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+  .scroll-cue { margin-top: 48px; display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; }
+  .scroll-cue .chev { animation: bounce 2s ease-in-out infinite; }
+  @keyframes bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(8px); } }
+
+  /* ---------- marquee ---------- */
+  .marquee { padding: 26px 0; border-top: 1px solid var(--stroke); border-bottom: 1px solid var(--stroke); background: rgba(255,255,255,0.02); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); overflow: hidden; }
+  .marquee-track { display: flex; gap: 56px; width: max-content; animation: marquee 36s linear infinite; }
+  .marquee span { font-family: var(--font-display); font-weight: 700; font-size: 18px; letter-spacing: 0.08em; color: rgba(234,244,255,0.55); display: flex; align-items: center; gap: 56px; white-space: nowrap; }
+  .marquee span::after { content: "✈"; color: rgba(79,216,255,0.6); }
+  @keyframes marquee { to { transform: translateX(-50%); } }
+
+  /* ---------- section headings ---------- */
+  .section-head { margin-bottom: 52px; max-width: 640px; }
+  .section-head.center { margin-left: auto; margin-right: auto; text-align: center; }
+  .kicker { display: inline-flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--cyan); margin-bottom: 14px; }
+  .kicker::before { content: ""; width: 26px; height: 1px; background: linear-gradient(90deg, transparent, var(--cyan)); }
+  .section-head h2 { font-family: var(--font-display); font-weight: 800; font-size: clamp(30px, 5vw, 48px); line-height: 1.08; letter-spacing: -0.01em; }
+  .section-head p { color: var(--muted); margin-top: 12px; font-size: 16px; }
+
+  /* ---------- video grid ---------- */
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; }
+  .video-card { padding: 12px; display: flex; flex-direction: column; transition: transform 0.4s cubic-bezier(.2,.8,.2,1), box-shadow 0.4s; }
+  .video-card:hover { transform: translateY(-8px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 34px 90px -30px rgba(0,0,0,0.85); }
+  .thumb { position: relative; aspect-ratio: 16/9; border-radius: 16px; overflow: hidden; display: grid; place-items: center; }
+  .thumb svg { width: 44%; height: auto; color: rgba(255,255,255,0.92); filter: drop-shadow(0 8px 20px rgba(0,0,0,0.35)); transition: transform 0.5s cubic-bezier(.2,.8,.2,1); }
+  .video-card:hover .thumb svg { transform: scale(1.08) rotate(-2deg); }
+  .thumb .grad { position: absolute; inset: 0; background: inherit; }
+  .duration { position: absolute; right: 10px; bottom: 10px; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 8px; background: rgba(0,0,0,0.6); color: #fff; letter-spacing: 0.03em; }
+  .play {
+    position: absolute; width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center;
+    background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.4);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 10px 30px -8px rgba(0,0,0,0.6);
+    opacity: 0; transform: scale(0.7); transition: opacity 0.3s, transform 0.3s cubic-bezier(.2,.8,.2,1);
+  }
+  .video-card:hover .play { opacity: 1; transform: scale(1); }
+  .video-body { padding: 16px 8px 8px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+  .video-body h3 { font-family: var(--font-display); font-size: 17px; font-weight: 700; line-height: 1.3; }
+  .video-meta { font-size: 13px; color: var(--muted); display: flex; gap: 12px; }
+  .watch { margin-top: auto; font-size: 14px; font-weight: 600; color: var(--cyan); display: inline-flex; align-items: center; gap: 6px; opacity: 0.7; transition: opacity 0.25s, gap 0.25s; }
+  .video-card:hover .watch { opacity: 1; gap: 10px; }
+
+  /* ---------- about ---------- */
+  .about-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 32px; align-items: stretch; }
+  .about-panel { padding: 40px; }
+  .about-panel p { color: var(--muted); font-size: 16px; }
+  .about-panel p + p { margin-top: 16px; }
+  .features { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .feature { padding: 24px; }
+  .feature .icon { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; font-size: 22px; margin-bottom: 14px; background: linear-gradient(135deg, rgba(79,216,255,0.2), rgba(143,107,255,0.2)); border: 1px solid var(--stroke); box-shadow: inset 0 1px 0 rgba(255,255,255,0.2); }
+  .feature h4 { font-family: var(--font-display); font-weight: 700; font-size: 16px; margin-bottom: 6px; }
+  .feature p { font-size: 14px; color: var(--muted); }
+
+  /* ---------- CTA ---------- */
+  .cta { padding: 60px 40px; text-align: center; overflow: hidden; }
+  .cta::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit; background: radial-gradient(70% 120% at 50% 120%, rgba(79,216,255,0.25), transparent 60%); }
+  .cta h2 { font-family: var(--font-display); font-weight: 800; font-size: clamp(30px, 5vw, 52px); line-height: 1.05; margin-bottom: 14px; }
+  .cta p { color: var(--muted); max-width: 520px; margin: 0 auto 30px; }
+  .cta .hero-cta { position: relative; z-index: 1; }
+
+  /* ---------- footer ---------- */
+  footer { padding: 60px 0 70px; border-top: 1px solid var(--stroke); }
+  .footer-inner { display: flex; flex-wrap: wrap; gap: 24px; align-items: center; justify-content: space-between; }
+  .footer-inner .logo { font-size: 16px; }
+  .socials { display: flex; gap: 12px; }
+  .social {
+    width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; text-decoration: none; color: var(--muted);
+    background: var(--glass); border: 1px solid var(--stroke); transition: color 0.25s, transform 0.25s, border-color 0.25s, background 0.25s;
+  }
+  .social:hover { color: #fff; transform: translateY(-3px); border-color: var(--stroke-bright); background: var(--glass-strong); }
+  .social svg { width: 20px; height: 20px; fill: currentColor; }
+  .fineprint { margin-top: 28px; font-size: 13px; color: var(--muted); opacity: 0.7; text-align: center; }
+
+  /* ---------- reveal animations ---------- */
+  .reveal { opacity: 0; transform: translateY(30px); filter: blur(8px); transition: opacity 0.85s cubic-bezier(.2,.7,.2,1), transform 0.85s cubic-bezier(.2,.7,.2,1), filter 0.85s; }
+  .reveal.in { opacity: 1; transform: none; filter: none; }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: repeat(2, 1fr); }
+    .about-grid { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: repeat(2, auto); }
+  }
+  @media (max-width: 640px) {
+    section { padding: 68px 0; }
+    .nav-links { display: none; position: absolute; top: 70px; left: 16px; right: 16px; flex-direction: column; align-items: stretch; padding: 12px; }
+    .nav-links.open { display: flex; }
+    .nav-links a { text-align: center; }
+    .nav-toggle { display: grid; place-items: center; }
+    .grid { grid-template-columns: 1fr; }
+    .features { grid-template-columns: 1fr; }
+    .stats { gap: 18px; padding: 22px 24px; }
+    .cta { padding: 44px 24px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+    html { scroll-behavior: auto; }
+    .reveal { opacity: 1; transform: none; filter: none; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- hidden SVG symbols -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="jet" viewBox="0 0 220 100">
+      <g fill="currentColor">
+        <path d="M34 44 L206 50 L34 60 Q29 52 34 44 Z" />
+        <path d="M42 44 L32 8 L58 44 Z" />
+        <path d="M46 58 L38 72 L62 58 Z" />
+        <path d="M96 49 L142 90 L153 90 L112 49 Z" />
+        <path d="M118 66 L150 66 L150 80 L122 80 Z" />
+      </g>
+    </symbol>
+  </svg>
+
+  <div class="bg-aurora" aria-hidden="true">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+    <div class="blob blob-4"></div>
+  </div>
+  <canvas id="sky" aria-hidden="true"></canvas>
+  <div class="bg-noise" aria-hidden="true"></div>
+
+  <header>
+    <nav class="nav glass" aria-label="Main navigation">
+      <a class="logo" href="#top">
+        <span class="logo-badge">MP</span>
+        <span>MR&nbsp;PTFS</span>
+      </a>
+      <div class="nav-links" id="navLinks">
+        <a href="#videos">Videos</a>
+        <a href="#about">About</a>
+        <a href="#subscribe">Subscribe</a>
+      </div>
+      <a class="btn btn-primary btn-sm" href="https://www.youtube.com/@mrptfs?sub_confirmation=1" target="_blank" rel="noopener">Subscribe</a>
+      <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">☰</button>
+    </nav>
+  </header>
+
+  <main id="top">
+    <!-- HERO -->
+    <section class="hero wrap" style="padding-bottom: 40px;">
+      <div class="avatar">MP</div>
+      <span class="eyebrow glass"><span class="dot"></span> Flight Sim Creator</span>
+      <h1><span class="title-gradient">MR PTFS</span></h1>
+      <p class="subtitle">Take to the skies. Flight-sim adventures, beginner tutorials, and butter-smooth landings — new videos every week.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="https://www.youtube.com/@mrptfs" target="_blank" rel="noopener">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+          Watch Latest
+        </a>
+        <a class="btn btn-glass" href="https://www.youtube.com/@mrptfs?sub_confirmation=1" target="_blank" rel="noopener">Subscribe</a>
+      </div>
+      <div class="stats glass">
+        <div class="stat"><div class="num" data-count="128" data-suffix="K">0</div><div class="label">Subscribers</div></div>
+        <div class="stat"><div class="num" data-count="4.2" data-suffix="M" data-decimals="1">0</div><div class="label">Total views</div></div>
+        <div class="stat"><div class="num" data-count="312">0</div><div class="label">Videos</div></div>
+        <div class="stat"><div class="num">2020</div><div class="label">Since</div></div>
+      </div>
+      <div class="scroll-cue">
+        <span>Scroll</span>
+        <span class="chev">⌄</span>
+      </div>
+    </section>
+
+    <!-- MARQUEE -->
+    <div class="marquee" aria-hidden="true">
+      <div class="marquee-track">
+        <span>BOEING 747 &nbsp; AIRBUS A380 &nbsp; CESSNA 172 &nbsp; F-16 VIPER &nbsp; CONCORDE &nbsp; 737 MAX &nbsp; A320 &nbsp; GULFSTREAM G650 &nbsp; PIPER CUB &nbsp; SR-71 BLACKBIRD &nbsp;</span>
+        <span>BOEING 747 &nbsp; AIRBUS A380 &nbsp; CESSNA 172 &nbsp; F-16 VIPER &nbsp; CONCORDE &nbsp; 737 MAX &nbsp; A320 &nbsp; GULFSTREAM G650 &nbsp; PIPER CUB &nbsp; SR-71 BLACKBIRD &nbsp;</span>
+      </div>
+    </div>
+
+    <!-- VIDEOS -->
+    <section id="videos" class="wrap">
+      <div class="section-head center reveal">
+        <span class="kicker">Latest flights</span>
+        <h2>Fresh from the flight deck</h2>
+        <p>Long hauls, storm landings, and cockpit deep-dives — the newest uploads from the channel.</p>
+      </div>
+      <div class="grid">
+        <a class="video-card glass sheen reveal" href="https://www.youtube.com/@mrptfs" target="_blank" rel="noopener">
+          <div class="thumb" style="background: linear-gradient(135deg, #ff8a5c, #ff2d78);">
+            <svg><use href="#jet"/></svg>
+            <span class="duration">24:18</span>
+            <span class="play">▶</span>
+          </div>
+          <div class="video-body">
+            <h3>Flying the A380 across the Atlantic — full flight</h3>
+            <div class="video-meta"><span>128K views</span><span>2 days ago</span></div>
+            <span class="watch">Watch now →</span>
+          </div>
+        </a>
+        <a class="video-card glass sheen reveal" href="https://www.youtube.com/@mrptfs" target="_blank" rel="noopener">
+          <div class="thumb" style="background: linear-gradient(135deg, #36d1dc, #5b86e5);">
+            <svg><use href="#jet"/></svg>
+            <span class="duration">15:42</span>
+            <span class="play">▶</span>
+          </div>
+          <div class="video-body">
+            <h3>PTFS beginner guide: from runway to cruise</h3>
+            <div class="video-meta"><span>96K views</span><span>1 week ago</span></div>
+            <span class="watch">Watch now →</span>
+          </div>
+        </a>
+        <a class="video-card glass sheen reveal" href="https://www.youtube.com/@mrptfs" target="_blank" rel="noopener">
+          <div class="thumb" style="background: linear-gradient(135deg, #0f2027, #2c5364);">
+            <svg><use href="#jet"/></svg>
+            <span class="duration">11:05</span>
+            <span class="play">▶</span>
+          </div>
+          <div class="video-body">
+            <h3>Top 10 butter-smooth landings in PTFS</h3>
+            <div class="video-meta"><span>210K views</span><span>2 weeks ago</span></div>
+            <span class="watch">Watch now →</span>
+          </div>
+        </a>
+        <a class="video-card glass sheen reveal" href="https://www.youtube.com/@mrptfs" target="_blank" rel="noopener">
+          <div class="thumb" style="background: linear-gradient(135deg, #4b6cb7, #182848);">
+            <svg><use href="#jet"/></svg>
+            <span class="duration">18:33</span>
+            <span class="play">▶</span>
+          </div>
+          <div class="video-body">
+            <h3>747 Heavy: storm landing challenge</h3>
+            <div class="video-meta"><span>87K views</span><span>3 weeks ago</span></div>
+            <span class="watch">Watch now →</span>
+          </div>
+        </a>
+        <a class="video-card glass sheen reveal" href="https://www.youtube.com/@mrptfs" target="_blank" rel="noopener">
+          <div class="thumb" style="background: linear-gradient(135deg, #8e2de2, #4a00e0);">
+            <svg><use href="#jet"/></svg>
+            <span class="duration">13:20</span>
+            <span class="play">▶</span>
+          </div>
+          <div class="video-body">
+            <h3>Night ops: instrument flying in fog</h3>
+            <div class="video-meta"><span>74K views</span><span>1 month ago</span></div>
+            <span class="watch">Watch now →</span>
+          </div>
+        </a>
+        <a class="video-card glass sheen reveal" href="https://www.youtube.com/@mrptfs" target="_blank" rel="noopener">
+          <div class="thumb" style="background: linear-gradient(135deg, #56ccf2, #2f80ed);">
+            <svg><use href="#jet"/></svg>
+            <span class="duration">21:47</span>
+            <span class="play">▶</span>
+          </div>
+          <div class="video-body">
+            <h3>Concorde at Mach 2 — supersonic test flight</h3>
+            <div class="video-meta"><span>156K views</span><span>1 month ago</span></div>
+            <span class="watch">Watch now →</span>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <!-- ABOUT -->
+    <section id="about" class="wrap">
+      <div class="about-grid">
+        <div class="glass about-panel reveal">
+          <div class="section-head" style="margin-bottom: 20px;">
+            <span class="kicker">About the channel</span>
+            <h2>Welcome aboard, captain</h2>
+          </div>
+          <p>MR PTFS is a home for anyone who loves flight simulation. From my first wobbly circuit in Pilot Training Flight Simulator to full IFR cross-country flights, every video is made to help you fly better and have more fun doing it.</p>
+          <p>Expect realistic flights, honest gear and settings guides, and the occasional catastrophic landing that we all learn from. Fasten your seatbelt — it's going to be a smooth ride.</p>
+        </div>
+        <div class="features">
+          <div class="feature glass reveal">
+            <div class="icon">🛫</div>
+            <h4>Realistic flights</h4>
+            <p>Full procedures, real weather, and proper checklists on every trip.</p>
+          </div>
+          <div class="feature glass reveal">
+            <div class="icon">🎓</div>
+            <h4>Tutorials & tips</h4>
+            <p>From cold-and-dark to autoland, learn the sim one system at a time.</p>
+          </div>
+          <div class="feature glass reveal">
+            <div class="icon">🎮</div>
+            <h4>PTFS & beyond</h4>
+            <p>PTFS, MSFS, DCS and more — the skies have no single sim.</p>
+          </div>
+          <div class="feature glass reveal">
+            <div class="icon">🌍</div>
+            <h4>Community first</h4>
+            <p>Flight plans, liveries, and a Discord full of fellow aviators.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section id="subscribe" class="wrap">
+      <div class="cta glass sheen reveal">
+        <span class="kicker">Join the crew</span>
+        <h2>Never miss a flight</h2>
+        <p>Subscribe and hit the bell so you're first on the runway for every new upload.</p>
+        <div class="hero-cta">
+          <a class="btn btn-primary" href="https://www.youtube.com/@mrptfs?sub_confirmation=1" target="_blank" rel="noopener">Subscribe on YouTube</a>
+          <a class="btn btn-glass" href="https://www.youtube.com/@mrptfs" target="_blank" rel="noopener">Browse channel</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap footer-inner">
+      <a class="logo" href="#top">
+        <span class="logo-badge">MP</span>
+        <span>MR&nbsp;PTFS</span>
+      </a>
+      <div class="socials">
+        <a class="social" href="https://www.youtube.com/@mrptfs" target="_blank" rel="noopener" aria-label="YouTube">
+          <svg viewBox="0 0 24 24"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8zM9.6 15.6V8.4L15.8 12l-6.2 3.6z"/></svg>
+        </a>
+        <a class="social" href="#" aria-label="X (Twitter)">
+          <svg viewBox="0 0 24 24"><path d="M18.9 1.2h3.7l-8.1 9.3L24 22.8h-7.5l-5.9-7.7-6.7 7.7H.2l8.7-9.9L0 1.2h7.7l5.3 7 6-7zm-1.3 19.4h2L6.6 3.3h-2.2l13.2 17.3z"/></svg>
+        </a>
+        <a class="social" href="#" aria-label="Discord">
+          <svg viewBox="0 0 24 24"><path d="M20.3 4.4A19.8 19.8 0 0 0 15.4 3l-.2.5a16 16 0 0 0-6.4 0L8.6 3a19.8 19.8 0 0 0-4.9 1.4A20.4 20.4 0 0 0 .1 18.1a19.9 19.9 0 0 0 6 3l.4-.7a12.9 12.9 0 0 1-2-1l.5-.4a14.2 14.2 0 0 0 12.2 0l.5.4a12.9 12.9 0 0 1-2 1l.4.7a19.9 19.9 0 0 0 6-3A20.4 20.4 0 0 0 20.3 4.4zM8 15.3c-1.2 0-2.1-1.1-2.1-2.4S6.8 10.5 8 10.5s2.2 1.1 2.1 2.4c0 1.3-.9 2.4-2.1 2.4zm8 0c-1.2 0-2.1-1.1-2.1-2.4s1-2.4 2.1-2.4 2.2 1.1 2.1 2.4c0 1.3-.9 2.4-2.1 2.4z"/></svg>
+        </a>
+        <a class="social" href="#" aria-label="Instagram">
+          <svg viewBox="0 0 24 24"><path d="M12 2.2c3.2 0 3.6 0 4.9.1 1.2.1 1.8.2 2.2.4.6.2 1 .5 1.4.9.4.4.7.8.9 1.4.2.4.4 1 .4 2.2.1 1.3.1 1.7.1 4.9s0 3.6-.1 4.9c-.1 1.2-.2 1.8-.4 2.2a3.8 3.8 0 0 1-.9 1.4c-.4.4-.8.7-1.4.9-.4.2-1 .4-2.2.4-1.3.1-1.7.1-4.9.1s-3.6 0-4.9-.1c-1.2-.1-1.8-.2-2.2-.4a3.8 3.8 0 0 1-1.4-.9 3.8 3.8 0 0 1-.9-1.4c-.2-.4-.4-1-.4-2.2C2.2 15.6 2.2 15.2 2.2 12s0-3.6.1-4.9c.1-1.2.2-1.8.4-2.2.2-.6.5-1 .9-1.4.4-.4.8-.7 1.4-.9.4-.2 1-.4 2.2-.4C8.4 2.2 8.8 2.2 12 2.2zm0 1.8c-3.1 0-3.5 0-4.8.1-1.1 0-1.7.2-2.1.4-.5.2-.9.4-1.2.8-.4.4-.6.7-.8 1.2-.2.4-.3 1-.4 2.1-.1 1.3-.1 1.7-.1 4.8s0 3.5.1 4.8c0 1.1.2 1.7.4 2.1.2.5.4.9.8 1.2.4.4.7.6 1.2.8.4.2 1 .3 2.1.4 1.3.1 1.7.1 4.8.1s3.5 0 4.8-.1c1.1 0 1.7-.2 2.1-.4.5-.2.9-.4 1.2-.8.4-.4.6-.7.8-1.2.2-.4.3-1 .4-2.1.1-1.3.1-1.7.1-4.8s0-3.5-.1-4.8c0-1.1-.2-1.7-.4-2.1a2 2 0 0 0-.8-1.2 2 2 0 0 0-1.2-.8c-.4-.2-1-.3-2.1-.4-1.3-.1-1.7-.1-4.8-.1zm0 3.1a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 8.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4zm6.4-8.4a1.2 1.2 0 1 1-2.4 0 1.2 1.2 0 0 1 2.4 0z"/></svg>
+        </a>
+      </div>
+    </div>
+    <div class="wrap fineprint">© 2026 MR PTFS. Made for the love of aviation. Not affiliated with any flight sim developer.</div>
+  </footer>
+
+  <script type="importmap">
+  { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+  </script>
+  <script type="module">
+  (function () {
+    "use strict";
+
+    /* ============================= UI interactions ============================= */
+    var nav = document.querySelector(".nav");
+    var navToggle = document.getElementById("navToggle");
+    var navLinks = document.getElementById("navLinks");
+
+    function onScrollUI() {
+      if (nav) nav.classList.toggle("scrolled", window.scrollY > 40);
+    }
+    window.addEventListener("scroll", onScrollUI, { passive: true });
+    onScrollUI();
+
+    if (navToggle && navLinks) {
+      navToggle.addEventListener("click", function () {
+        var open = navLinks.classList.toggle("open");
+        navToggle.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+    }
+
+    // reveal on scroll
+    var reveals = document.querySelectorAll(".reveal");
+    if ("IntersectionObserver" in window) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("in");
+            io.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.14, rootMargin: "0px 0px -8% 0px" });
+      reveals.forEach(function (el, i) {
+        el.style.transitionDelay = (i % 3) * 0.08 + "s";
+        io.observe(el);
+      });
+    } else {
+      reveals.forEach(function (el) { el.classList.add("in"); });
+    }
+
+    // animated counters
+    function animateCount(el) {
+      var target = parseFloat(el.getAttribute("data-count"));
+      var decimals = parseInt(el.getAttribute("data-decimals") || "0", 10);
+      var suffix = el.getAttribute("data-suffix") || "";
+      var duration = 1700;
+      var start = null;
+      function step(ts) {
+        if (!start) start = ts;
+        var t = Math.min(1, (ts - start) / duration);
+        var eased = 1 - Math.pow(1 - t, 3);
+        el.textContent = target * eased % 1 === 0 ? (target * eased).toFixed(decimals) + suffix : (target * eased).toFixed(decimals) + suffix;
+        if (t < 1) requestAnimationFrame(step);
+        else el.textContent = target.toFixed(decimals) + suffix;
+      }
+      requestAnimationFrame(step);
+    }
+    var counters = document.querySelectorAll("[data-count]");
+    if ("IntersectionObserver" in window) {
+      var cio = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) { animateCount(entry.target); cio.unobserve(entry.target); }
+        });
+      }, { threshold: 0.5 });
+      counters.forEach(function (el) { cio.observe(el); });
+    } else {
+      counters.forEach(function (el) {
+        el.textContent = el.getAttribute("data-count") + (el.getAttribute("data-suffix") || "");
+      });
+    }
+
+    /* ============================= 3D scene ============================= */
+    var canvas = document.getElementById("sky");
+    if (!canvas) return;
+
+    (async function () {
+    let THREE;
+    try {
+      THREE = await import("three");
+    } catch (err) {
+      document.body.classList.add("no-3d");
+      return;
+    }
+    var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    var renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true, powerPreference: "high-performance" });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
+
+    var scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x081a33, 0.013);
+
+    var camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 300);
+    camera.position.set(0, 1.1, 9.5);
+
+    // environment map from a painted gradient (gives the glass something to refract)
+    function makeEnvTexture() {
+      var c = document.createElement("canvas");
+      c.width = 1024; c.height = 512;
+      var ctx = c.getContext("2d");
+      var g = ctx.createLinearGradient(0, 0, 0, 512);
+      g.addColorStop(0, "#0d2f55");
+      g.addColorStop(0.32, "#4aa8e8");
+      g.addColorStop(0.58, "#bfe6ff");
+      g.addColorStop(1, "#ffffff");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, 1024, 512);
+      var sun = ctx.createRadialGradient(760, 130, 10, 760, 130, 240);
+      sun.addColorStop(0, "rgba(255,255,255,1)");
+      sun.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = sun;
+      ctx.fillRect(0, 0, 1024, 512);
+      var tex = new THREE.CanvasTexture(c);
+      tex.mapping = THREE.EquirectangularReflectionMapping;
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    }
+
+    var pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromEquirectangular(makeEnvTexture()).texture;
+    pmrem.dispose();
+
+    // lights
+    scene.add(new THREE.AmbientLight(0xe8f4ff, 0.7));
+    var key = new THREE.DirectionalLight(0xffffff, 2.4);
+    key.position.set(6, 8, 6);
+    scene.add(key);
+    var rim = new THREE.DirectionalLight(0x66c8ff, 1.6);
+    rim.position.set(-6, -2, -4);
+    scene.add(rim);
+    var fill = new THREE.PointLight(0x9fe0ff, 60, 40, 2);
+    fill.position.set(0, 3, 3);
+    scene.add(fill);
+
+    function glassMaterial(opts) {
+      opts = opts || {};
+      return new THREE.MeshPhysicalMaterial({
+        color: opts.color || 0xcdefff,
+        metalness: opts.metalness != null ? opts.metalness : 0.0,
+        roughness: opts.roughness != null ? opts.roughness : 0.04,
+        transmission: opts.transmission != null ? opts.transmission : 0.92,
+        thickness: opts.thickness != null ? opts.thickness : 0.5,
+        ior: 1.45,
+        clearcoat: 1.0,
+        clearcoatRoughness: opts.clearcoatRoughness != null ? opts.clearcoatRoughness : 0.05,
+        iridescence: opts.iridescence != null ? opts.iridescence : 0.4,
+        iridescenceIOR: 1.3,
+        envMapIntensity: opts.envMapIntensity != null ? opts.envMapIntensity : 1.4,
+        transparent: true,
+        opacity: opts.opacity != null ? opts.opacity : 0.95,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      });
+    }
+
+    function buildPlane() {
+      var group = new THREE.Group();
+      var glass = glassMaterial();
+      var white = new THREE.MeshPhysicalMaterial({
+        color: 0xffffff, metalness: 0.05, roughness: 0.18,
+        clearcoat: 1.0, clearcoatRoughness: 0.08, envMapIntensity: 1.2,
+      });
+      var cockpit = new THREE.MeshPhysicalMaterial({
+        color: 0x0b2533, metalness: 0.3, roughness: 0.1,
+        transmission: 0.3, thickness: 0.6, clearcoat: 1.0,
+        clearcoatRoughness: 0.05, envMapIntensity: 1.2,
+      });
+
+      // fuselage
+      var body = new THREE.Mesh(new THREE.CapsuleGeometry(0.33, 2.9, 8, 48), glass);
+      body.rotation.x = Math.PI / 2;
+      body.position.z = -0.35;
+      group.add(body);
+
+      // nose cone
+      var nose = new THREE.Mesh(new THREE.ConeGeometry(0.33, 0.85, 48), glass);
+      nose.rotation.x = -Math.PI / 2;
+      nose.position.z = 1.5;
+      group.add(nose);
+
+      // tail cone
+      var tailcone = new THREE.Mesh(new THREE.ConeGeometry(0.2, 1.1, 48), glass);
+      tailcone.rotation.x = Math.PI / 2;
+      tailcone.position.z = -2.15;
+      group.add(tailcone);
+
+      function makeWing(mirror, scale) {
+        var s = new THREE.Shape();
+        s.moveTo(0.0, 0.0);
+        s.lineTo(2.6, 0.34);
+        s.lineTo(2.9, 0.42);
+        s.lineTo(0.55, 0.92);
+        s.closePath();
+        var geo = new THREE.ExtrudeGeometry(s, {
+          depth: 0.06, bevelEnabled: true, bevelThickness: 0.05,
+          bevelSize: 0.03, bevelSegments: 3, steps: 1,
+        });
+        var wing = new THREE.Mesh(geo, glass);
+        wing.rotation.x = -Math.PI / 2;
+        if (mirror) wing.scale.x = -1;
+        if (scale) wing.scale.multiplyScalar(scale);
+        wing.position.set(mirror ? -0.5 : 0.5, 0.12, -0.45);
+        return wing;
+      }
+
+      group.add(makeWing(false));
+      group.add(makeWing(true));
+
+      var hstabL = makeWing(true, 0.42);
+      hstabL.position.set(-0.5, 0.3, -1.75);
+      group.add(hstabL);
+      var hstabR = makeWing(false, 0.42);
+      hstabR.position.set(0.5, 0.3, -1.75);
+      group.add(hstabR);
+
+      // vertical fin
+      var f = new THREE.Shape();
+      f.moveTo(0.9, 0.0);
+      f.lineTo(-0.55, 0.0);
+      f.lineTo(-0.3, 1.25);
+      f.lineTo(0.6, 1.05);
+      f.closePath();
+      var finGeo = new THREE.ExtrudeGeometry(f, {
+        depth: 0.05, bevelEnabled: true, bevelThickness: 0.04,
+        bevelSize: 0.02, bevelSegments: 2, steps: 1,
+      });
+      var fin = new THREE.Mesh(finGeo, glass);
+      fin.rotation.y = -Math.PI / 2;
+      fin.position.set(0, 0.32, -1.35);
+      group.add(fin);
+
+      function makeEngine(side) {
+        var g = new THREE.Group();
+        var nacelle = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.14, 1.4, 32), glass);
+        nacelle.rotation.x = Math.PI / 2;
+        g.add(nacelle);
+        var intake = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.03, 16, 32), white);
+        intake.position.z = 0.72;
+        g.add(intake);
+        var exhaust = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.35, 32), white);
+        exhaust.rotation.x = -Math.PI / 2;
+        exhaust.position.z = -0.85;
+        g.add(exhaust);
+        g.position.set(0.4 * side, 0.02, -0.85);
+        return g;
+      }
+      group.add(makeEngine(1));
+      group.add(makeEngine(-1));
+
+      // cockpit canopy
+      var canopy = new THREE.Mesh(new THREE.SphereGeometry(0.28, 32, 24), cockpit);
+      canopy.scale.set(0.62, 0.55, 1.35);
+      canopy.position.set(0, 0.3, 1.05);
+      group.add(canopy);
+
+      // wingtip specular dots
+      var dotGeo = new THREE.SphereGeometry(0.07, 24, 24);
+      var tipL = new THREE.Mesh(dotGeo, white);
+      tipL.position.set(-3.5, 0.1, -0.78);
+      group.add(tipL);
+      var tipR = new THREE.Mesh(dotGeo, white);
+      tipR.position.set(3.5, 0.1, -0.78);
+      group.add(tipR);
+
+      return group;
+    }
+
+    function cloudTexture() {
+      var c = document.createElement("canvas");
+      c.width = c.height = 128;
+      var ctx = c.getContext("2d");
+      var g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+      g.addColorStop(0, "rgba(255,255,255,0.95)");
+      g.addColorStop(0.45, "rgba(255,255,255,0.5)");
+      g.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, 128, 128);
+      var t = new THREE.CanvasTexture(c);
+      return t;
+    }
+
+    function buildClouds() {
+      var group = new THREE.Group();
+      var tex = cloudTexture();
+      for (var i = 0; i < 26; i++) {
+        var mat = new THREE.SpriteMaterial({
+          map: tex, transparent: true, opacity: 0.28 + Math.random() * 0.16,
+          depthWrite: false, color: 0xffffff, fog: false,
+        });
+        var s = new THREE.Sprite(mat);
+        var scale = 3 + Math.random() * 7;
+        s.scale.set(scale, scale * (0.42 + Math.random() * 0.28), 1);
+        s.position.set(
+          (Math.random() - 0.5) * 34,
+          -3.5 + Math.random() * 10,
+          -13 - Math.random() * 14
+        );
+        s.userData.speed = 0.3 + Math.random() * 0.8;
+        group.add(s);
+      }
+      return group;
+    }
+
+    function buildOrbs() {
+      var group = new THREE.Group();
+      var mat = glassMaterial({ thickness: 1.4, roughness: 0.02, transmission: 0.96, envMapIntensity: 1.5, iridescence: 0.3 });
+      var spots = [
+        [-4.4, 2.6, -4], [4.7, 1.4, -6], [-3.6, -2.0, -3], [5.4, -2.3, -5],
+        [-5.8, 0.3, -7], [2.8, 3.4, -8],
+      ];
+      spots.forEach(function (p, i) {
+        var r = 0.32 + Math.random() * 0.75;
+        var orb = new THREE.Mesh(new THREE.SphereGeometry(r, 48, 48), mat);
+        orb.position.set(p[0], p[1], p[2]);
+        orb.userData.phase = i * 1.7;
+        group.add(orb);
+      });
+      return group;
+    }
+
+    function buildShards() {
+      var group = new THREE.Group();
+      var mat = glassMaterial({ color: 0xdff4ff, thickness: 0.4, transmission: 0.9, iridescence: 0.6, envMapIntensity: 1.5 });
+      var geo = new THREE.TetrahedronGeometry(0.5, 0);
+      for (var i = 0; i < 14; i++) {
+        var shard = new THREE.Mesh(geo, mat);
+        shard.scale.set(0.4 + Math.random() * 0.9, 0.15 + Math.random() * 0.5, 0.2 + Math.random() * 0.5);
+        shard.position.set(
+          (Math.random() - 0.5) * 14,
+          (Math.random() - 0.5) * 7,
+          -6 - Math.random() * 10
+        );
+        shard.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+        shard.userData.phase = i;
+        group.add(shard);
+      }
+      return group;
+    }
+
+    function buildDust() {
+      var count = 320;
+      var positions = new Float32Array(count * 3);
+      for (var i = 0; i < count; i++) {
+        positions[i * 3] = (Math.random() - 0.5) * 32;
+        positions[i * 3 + 1] = (Math.random() - 0.5) * 16;
+        positions[i * 3 + 2] = -2 - Math.random() * 20;
+      }
+      var geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+      var mat = new THREE.PointsMaterial({
+        color: 0xcfeaff, size: 0.05, transparent: true, opacity: 0.5,
+        depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
+      });
+      return new THREE.Points(geo, mat);
+    }
+
+    var plane = buildPlane();
+    plane.position.set(0, 0.35, 0);
+    plane.scale.setScalar(0.95);
+    scene.add(plane);
+
+    var clouds = buildClouds();
+    scene.add(clouds);
+    var orbs = buildOrbs();
+    scene.add(orbs);
+    var shards = buildShards();
+    scene.add(shards);
+    var dust = buildDust();
+    scene.add(dust);
+
+    var mx = 0, my = 0;
+    window.addEventListener("pointermove", function (e) {
+      mx = (e.clientX / window.innerWidth) * 2 - 1;
+      my = (e.clientY / window.innerHeight) * 2 - 1;
+    }, { passive: true });
+
+    window.addEventListener("resize", function () {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    var clock = new THREE.Clock();
+
+    renderer.setAnimationLoop(function () {
+      var t = clock.getElapsedTime();
+      var scrollY = window.scrollY || 0;
+      var maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+      var p = Math.min(1, scrollY / maxScroll);
+
+      // fade the 3D layer a touch once the user scrolls into content, for readability
+      canvas.style.opacity = String(Math.max(0.4, 1 - p * 0.7));
+
+      if (!reduceMotion) {
+        camera.position.x += (mx * 1.4 - camera.position.x) * 0.04;
+        camera.position.y += (1.1 - my * 0.9 - camera.position.y) * 0.04;
+        camera.lookAt(0, 0.2, -2.5);
+
+        plane.rotation.z = -0.14 + Math.sin(t * 0.5) * 0.05 + p * 0.3;
+        plane.rotation.x = Math.sin(t * 0.6) * 0.05 + p * 0.18;
+        plane.rotation.y = 0.55 + Math.sin(t * 0.3) * 0.12 - p * 0.2;
+        plane.position.y = 0.35 + Math.sin(t * 0.9) * 0.18;
+
+        clouds.children.forEach(function (c) {
+          c.position.x += 0.0018 * c.userData.speed;
+          if (c.position.x > 18) c.position.x = -18;
+        });
+
+        shards.children.forEach(function (s, i) {
+          s.rotation.x += 0.004 + (i % 4) * 0.001;
+          s.rotation.y += 0.006;
+          s.position.y += Math.sin(t * 0.6 + i) * 0.002;
+        });
+
+        orbs.children.forEach(function (o, i) {
+          o.position.y += Math.sin(t * 0.5 + o.userData.phase) * 0.0015;
+          o.rotation.y += 0.005;
+        });
+
+        dust.rotation.y += 0.0004;
+      }
+
+      renderer.render(scene, camera);
+    });
+  })();
+  })();
+  </script>
+</body>
+</html>
